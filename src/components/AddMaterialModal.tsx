@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type FormEvent } from 'react'
 import { X, Search, AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import type { MaterialInsert } from '../types'

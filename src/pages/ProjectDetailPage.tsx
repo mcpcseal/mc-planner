@@ -250,7 +250,7 @@ export function ProjectDetailPage() {
         <EditMaterialModal
           material={editingMaterial}
           onClose={() => setEditingMaterial(null)}
-          onSubmit={data => updateMaterial.mutateAsync({ id: editingMaterial.id, ...data })}
+          onSubmit={async data => { await updateMaterial.mutateAsync({ id: editingMaterial.id, ...data }) }}
         />
       )}
 
@@ -258,7 +258,7 @@ export function ProjectDetailPage() {
         <EditProjectModal
           project={project}
           onClose={() => setShowEditModal(false)}
-          onSubmit={data => updateProject.mutateAsync(data)}
+          onSubmit={async data => { await updateProject.mutateAsync(data) }}
         />
       )}
 
@@ -266,7 +266,7 @@ export function ProjectDetailPage() {
         <AddMaterialModal
           projectId={id}
           onClose={() => setShowModal(false)}
-          onSubmit={data => addMaterial.mutateAsync(data)}
+          onSubmit={async data => { await addMaterial.mutateAsync(data) }}
         />
       )}
     </div>
