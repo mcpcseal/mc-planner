@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus, Sun, Moon, Pencil, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -77,6 +77,21 @@ export function ProjectDetailPage() {
     },
     enabled: !!id,
   })
+
+  useEffect(() => {
+    if (!id) return
+    const channel = supabase
+      .channel(`project-detail-${id}`)
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'projects', filter: `id=eq.${id}` },
+        (payload) => {
+          queryClient.setQueryData(['project', id], payload.new as Project)
+          queryClient.invalidateQueries({ queryKey: ['projects-with-materials'] })
+        }
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [id, queryClient])
 
   const updateProject = useMutation({
     mutationFn: async (data: { name: string; description: string | null }) => {
