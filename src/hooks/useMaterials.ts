@@ -17,8 +17,7 @@ export function useMaterials(projectId: string) {
         .from('materials')
         .select('*')
         .eq('project_id', projectId)
-        .order('category')
-        .order('name')
+        .order('position')
       if (error) throw error
       return data
     },
@@ -34,7 +33,6 @@ export function useMaterials(projectId: string) {
         (payload) => {
           queryClient.setQueryData<Material[]>(queryKey(projectId), (prev = []) => {
             if (payload.eventType === 'INSERT') {
-              // onSuccess에서 이미 추가한 경우 중복 방지
               if (prev.some(m => m.id === payload.new.id)) return prev
               return [...prev, payload.new as Material]
             }
@@ -54,7 +52,13 @@ export function useMaterials(projectId: string) {
 
   const addMaterial = useMutation({
     mutationFn: async (input: MaterialInsert) => {
-      const { data, error } = await supabase.from('materials').insert(input).select().single()
+      const currentMaterials = queryClient.getQueryData<Material[]>(queryKey(projectId)) ?? []
+      const position = input.position ?? currentMaterials.length
+      const { data, error } = await supabase
+        .from('materials')
+        .insert({ ...input, position })
+        .select()
+        .single()
       if (error) throw error
       return data as Material
     },
@@ -99,5 +103,44 @@ export function useMaterials(projectId: string) {
     },
   })
 
-  return { query, addMaterial, updateCount, deleteMaterial }
+  const updateMaterial = useMutation({
+    mutationFn: async ({ id, name, required_count, image_url }: { id: string; name: string; required_count: number; image_url: string | null }) => {
+      const { data, error } = await supabase
+        .from('materials')
+        .update({ name, required_count, image_url, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single()
+      if (error) throw error
+      return data as Material
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData<Material[]>(queryKey(projectId), prev =>
+        prev?.map(m => m.id === updated.id ? updated : m) ?? []
+      )
+    },
+  })
+
+  const reorderMaterials = useMutation({
+    mutationFn: async (updates: { id: string; position: number }[]) => {
+      const { error } = await supabase
+        .from('materials')
+        .upsert(updates, { onConflict: 'id' })
+      if (error) throw error
+    },
+    onMutate: async (updates) => {
+      await queryClient.cancelQueries({ queryKey: queryKey(projectId) })
+      const prev = queryClient.getQueryData<Material[]>(queryKey(projectId))
+      const posMap = new Map(updates.map(u => [u.id, u.position]))
+      queryClient.setQueryData<Material[]>(queryKey(projectId), old =>
+        old?.map(m => posMap.has(m.id) ? { ...m, position: posMap.get(m.id)! } : m) ?? []
+      )
+      return { prev }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(queryKey(projectId), ctx.prev)
+    },
+  })
+
+  return { query, addMaterial, updateCount, updateMaterial, deleteMaterial, reorderMaterials }
 }

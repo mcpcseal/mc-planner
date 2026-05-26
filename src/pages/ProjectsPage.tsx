@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { Plus, Pickaxe } from 'lucide-react'
+import { Plus, Pickaxe, Sun, Moon } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useProjects } from '../hooks/useProjects'
+import { useTheme } from '../contexts/ThemeContext'
 import { ProjectCard } from '../components/ProjectCard'
 import { AddProjectModal } from '../components/AddProjectModal'
+import { DeleteProjectModal } from '../components/DeleteProjectModal'
 import type { Material } from '../types'
 
 interface ProjectWithMaterials {
@@ -51,57 +53,69 @@ function useProjectsWithMaterials() {
 export function ProjectsPage() {
   const { data: projects, isLoading, isError } = useProjectsWithMaterials()
   const { createProject, deleteProject } = useProjects()
+  const { isDark, toggle } = useTheme()
   const [showModal, setShowModal] = useState(false)
+  const [deletingProject, setDeletingProject] = useState<{ id: string; name: string } | null>(null)
 
   function handleDelete(id: string) {
-    if (window.confirm('이 프로젝트를 삭제할까요? 재료 목록도 함께 삭제됩니다.')) {
-      deleteProject.mutate(id)
-    }
+    const project = projects?.find(p => p.id === id)
+    if (project) setDeletingProject({ id: project.id, name: project.name })
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
-      <header className="border-b border-gray-800 px-4 py-4">
+    <div id="projects-page" className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white">
+      <header id="projects-header" className="border-b border-gray-200 dark:border-gray-800 px-4 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Pickaxe size={20} className="text-green-400" />
+            <Pickaxe size={20} className="text-green-500 dark:text-green-400" />
             <h1 className="text-lg font-bold">MC Planner</h1>
           </div>
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold rounded-xl transition-colors"
-          >
-            <Plus size={16} />
-            새 프로젝트
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              id="theme-toggle-button"
+              onClick={toggle}
+              className="p-2 rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+              aria-label="테마 전환"
+            >
+              {isDark ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button
+              id="add-project-button"
+              onClick={() => setShowModal(true)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold rounded-xl transition-colors"
+            >
+              <Plus size={16} />
+              새 프로젝트
+            </button>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-6">
+      <main id="projects-main" className="max-w-4xl mx-auto px-4 py-6">
         {isLoading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div id="projects-loading" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="bg-gray-900 rounded-2xl p-5 border border-gray-800 animate-pulse h-36" />
+              <div key={i} className="bg-gray-200 dark:bg-gray-900 rounded-2xl p-5 border border-gray-300 dark:border-gray-800 animate-pulse h-36" />
             ))}
           </div>
         )}
 
         {isError && (
-          <div className="text-center py-16 text-red-400">
+          <div id="projects-error" className="text-center py-16 text-red-500 dark:text-red-400">
             데이터를 불러오는 중 오류가 발생했습니다.
           </div>
         )}
 
         {projects && projects.length === 0 && (
-          <div className="text-center py-24">
+          <div id="projects-empty" className="text-center py-24">
             <p className="text-4xl mb-4">🏗️</p>
-            <p className="text-gray-400 text-lg font-medium">프로젝트가 없습니다</p>
-            <p className="text-gray-600 text-sm mt-1">새 프로젝트를 만들어 재료를 관리해 보세요.</p>
+            <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">프로젝트가 없습니다</p>
+            <p className="text-gray-400 dark:text-gray-600 text-sm mt-1">새 프로젝트를 만들어 재료를 관리해 보세요.</p>
           </div>
         )}
 
         {projects && projects.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div id="projects-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {projects.map(project => {
               const total = project.materials.length
               const completed = project.materials.filter(
@@ -125,6 +139,14 @@ export function ProjectsPage() {
         <AddProjectModal
           onClose={() => setShowModal(false)}
           onSubmit={data => createProject.mutateAsync(data)}
+        />
+      )}
+
+      {deletingProject && (
+        <DeleteProjectModal
+          projectName={deletingProject.name}
+          onClose={() => setDeletingProject(null)}
+          onConfirm={() => deleteProject.mutateAsync(deletingProject.id)}
         />
       )}
     </div>
