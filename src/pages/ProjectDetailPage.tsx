@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Sun, Moon, Pencil, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { ArrowLeft, Plus, Sun, Moon, Pencil, ArrowUpDown, ArrowUp, ArrowDown, Search, X } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   DndContext,
@@ -66,6 +66,7 @@ export function ProjectDetailPage() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null)
   const [sortMode, setSortMode] = useState<'none' | 'rem_asc' | 'rem_desc' | 'prog_asc' | 'prog_desc'>('none')
+  const [searchQuery, setSearchQuery] = useState('')
 
   const queryClient = useQueryClient()
   const { data: project } = useQuery({
@@ -111,7 +112,7 @@ export function ProjectDetailPage() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
 
-  const displayMaterials = sortMode === 'none' ? materials : [...materials].sort((a, b) => {
+  const sortedMaterials = sortMode === 'none' ? materials : [...materials].sort((a, b) => {
     if (sortMode === 'rem_asc' || sortMode === 'rem_desc') {
       const remA = a.required_count - a.current_count
       const remB = b.required_count - b.current_count
@@ -121,6 +122,9 @@ export function ProjectDetailPage() {
     const progB = b.required_count > 0 ? b.current_count / b.required_count : 0
     return sortMode === 'prog_asc' ? progA - progB : progB - progA
   })
+
+  const q = searchQuery.trim().toLowerCase()
+  const displayMaterials = q ? sortedMaterials.filter(m => m.name.toLowerCase().includes(q)) : sortedMaterials
 
   const totalMaterials = materials.length
   const completedMaterials = materials.filter(
@@ -207,7 +211,22 @@ export function ProjectDetailPage() {
           <p id="overall-progress-percent" className="text-right text-xs text-gray-400 dark:text-gray-500 mt-1">{Math.floor(overallProgress * 100)}%</p>
         </div>
 
-        <div className="flex justify-end gap-2">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="재료 검색…"
+              className="w-full pl-8 pr-8 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 text-xs border border-gray-200 dark:border-gray-700 focus:border-green-500 outline-none transition-colors"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <X size={13} />
+              </button>
+            )}
+          </div>
           <button
             onClick={() => setSortMode(m => m === 'rem_desc' ? 'rem_asc' : m === 'rem_asc' ? 'none' : 'rem_desc')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ${sortMode === 'rem_asc' || sortMode === 'rem_desc' ? 'bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
@@ -235,7 +254,7 @@ export function ProjectDetailPage() {
         )}
 
         {!query.isLoading && displayMaterials.length > 0 && (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={sortMode === 'none' ? handleDragEnd(materials) : () => { }}>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={sortMode === 'none' && !q ? handleDragEnd(materials) : () => { }}>
             <SortableContext items={displayMaterials.map(m => m.id)} strategy={verticalListSortingStrategy}>
               <div id="materials-list" className="space-y-2">
                 {displayMaterials.map(m => (
@@ -257,6 +276,12 @@ export function ProjectDetailPage() {
             <p className="text-4xl mb-4">📦</p>
             <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">재료가 없습니다</p>
             <p className="text-gray-400 dark:text-gray-600 text-sm mt-1">재료 추가 버튼을 눌러 목록을 만들어 보세요.</p>
+          </div>
+        )}
+
+        {!query.isLoading && materials.length > 0 && displayMaterials.length === 0 && (
+          <div className="text-center py-16 text-gray-400 dark:text-gray-500 text-sm">
+            "{searchQuery}"와 일치하는 재료가 없습니다.
           </div>
         )}
       </main>
