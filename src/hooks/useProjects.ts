@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
+import { nanoid } from 'nanoid'
 import { supabase } from '../lib/supabase'
 import type { Project, ProjectInsert } from '../types'
 
@@ -31,7 +32,11 @@ export function useProjects() {
 
   const createProject = useMutation({
     mutationFn: async (input: ProjectInsert) => {
-      const { data, error } = await supabase.from('projects').insert(input).select().single()
+      const { data, error } = await supabase
+        .from('projects')
+        .insert({ ...input, id: nanoid(11) })
+        .select()
+        .single()
       if (error) throw error
       return data
     },
