@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Trash2, Check, GripVertical, Pencil } from 'lucide-react'
 import { ProgressBar } from './ProgressBar'
 import type { Material } from '../types'
@@ -22,6 +22,7 @@ function toSets(count: number): string {
 export function MaterialRow({ material, onUpdateCount, onDelete, onEdit, dragHandleProps }: Props) {
   const { id, name, required_count, current_count, image_url } = material
   const [inputValue, setInputValue] = useState(String(current_count))
+  useEffect(() => { setInputValue(String(current_count)) }, [current_count])
   const progress = required_count > 0 ? Math.min(1, current_count / required_count) : 0
   const isDone = current_count >= required_count && required_count > 0
 
