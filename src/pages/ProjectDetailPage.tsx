@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Sun, Moon, Pencil, ArrowUpDown, ArrowUp, ArrowDown, Search, X } from 'lucide-react'
+import { ArrowLeft, Plus, Sun, Moon, Pencil, ArrowUpDown, ArrowUp, ArrowDown, Search, X, Lock } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   DndContext,
@@ -69,7 +69,7 @@ export function ProjectDetailPage() {
   const [searchQuery, setSearchQuery] = useState('')
 
   const queryClient = useQueryClient()
-  const { data: project } = useQuery({
+  const { data: project, isError: projectError, isLoading: projectLoading, refetch: refetchProject } = useQuery({
     queryKey: ['project', id],
     queryFn: async (): Promise<Project> => {
       const { data, error } = await supabase.from('projects').select('*').eq('id', id!).single()
@@ -77,6 +77,12 @@ export function ProjectDetailPage() {
       return data
     },
     enabled: !!id,
+    retry: (failureCount, error) => {
+      // 접근 거부(no rows) 에러면 즉시 중단, 그 외 일시적 오류는 1회 재시도
+      if ((error as { code?: string })?.code === 'PGRST116') return false
+      return failureCount < 1
+    },
+    retryDelay: 800,
   })
 
   useEffect(() => {
@@ -107,6 +113,35 @@ export function ProjectDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['projects-with-materials'] })
     },
   })
+
+  const [joinPassword, setJoinPassword] = useState('')
+  const [joinLoading, setJoinLoading] = useState(false)
+  const [joinError, setJoinError] = useState<string | null>(null)
+
+  async function handleJoin(e: FormEvent) {
+    e.preventDefault()
+    setJoinLoading(true)
+    setJoinError(null)
+    try {
+      const { data, error } = await supabase.rpc('try_join_project', {
+        p_project_id: id!,
+        p_password: joinPassword.trim() || null,
+      })
+      if (error) { setJoinError('오류가 발생했습니다.'); return }
+      const result = data as { error?: string; success?: boolean }
+      if (result.error) {
+        if (result.error === 'not_found') setJoinError('프로젝트를 찾을 수 없습니다.')
+        else if (result.error === 'wrong_password') setJoinError('비밀번호가 올바르지 않습니다.')
+        else if (result.error === 'own_project') await refetchProject()
+        else setJoinError('오류가 발생했습니다.')
+        return
+      }
+      await refetchProject()
+      queryClient.invalidateQueries({ queryKey: ['materials', id] })
+    } finally {
+      setJoinLoading(false)
+    }
+  }
 
   const { isDark, toggle } = useTheme()
   const { query, addMaterial, updateCount, updateMaterial, deleteMaterial, reorderMaterials } = useMaterials(id!)
@@ -204,7 +239,45 @@ export function ProjectDetailPage() {
         </div>
       </header>
 
-      <main id="project-detail-main" className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+      {!projectLoading && projectError && (
+        <div className="flex items-center justify-center min-h-[calc(100vh-73px)] px-4">
+          <div className="w-full max-w-sm">
+            <div className="text-center mb-6">
+              <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-3">
+                <Lock size={20} className="text-gray-400 dark:text-gray-500" />
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">프로젝트 참여</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">이 프로젝트에 참여해야 접근할 수 있습니다.</p>
+            </div>
+            <form onSubmit={handleJoin} className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">비밀번호 (설정된 경우)</label>
+                <input
+                  type="password"
+                  value={joinPassword}
+                  onChange={e => { setJoinPassword(e.target.value); setJoinError(null) }}
+                  placeholder="비밀번호가 없으면 비워두세요"
+                  autoFocus
+                  className={`w-full px-4 py-2.5 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 border outline-none transition-colors ${joinError ? 'border-red-500 focus:border-red-400' : 'border-gray-200 dark:border-gray-700 focus:border-green-500'}`}
+                />
+                {joinError && <p className="text-red-400 text-sm mt-1.5">{joinError}</p>}
+              </div>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => navigate('/projects')}
+                  className="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm">
+                  돌아가기
+                </button>
+                <button type="submit" disabled={joinLoading}
+                  className="flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 disabled:bg-gray-200 dark:disabled:bg-gray-700 disabled:text-gray-400 dark:disabled:text-gray-500 text-white font-semibold transition-colors text-sm">
+                  {joinLoading ? '참여 중…' : '참여하기'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <main id="project-detail-main" className={`max-w-2xl mx-auto px-4 py-6 space-y-6 ${projectError ? 'hidden' : ''}`}>
         <div id="overall-progress-section" className="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-200 dark:border-gray-800">
           <div className="flex justify-between text-sm mb-2">
             <span className="text-gray-700 dark:text-gray-300 font-medium">전체 진행도</span>

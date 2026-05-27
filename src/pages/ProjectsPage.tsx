@@ -194,7 +194,10 @@ export function ProjectsPage() {
       {showModal && (
         <AddProjectModal
           onClose={() => setShowModal(false)}
-          onSubmit={data => createProject.mutateAsync(data)}
+          onSubmit={async data => {
+            await createProject.mutateAsync(data)
+            queryClient.invalidateQueries({ queryKey: ['projects-with-materials'] })
+          }}
         />
       )}
 
