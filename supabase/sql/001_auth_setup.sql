@@ -1,0 +1,6 @@
+-- user_id 컬럼 추가
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE;
+
+-- RLS 활성화
+ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE materials ENABLE ROW LEVEL SECURITY;

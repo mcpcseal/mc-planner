@@ -9,10 +9,18 @@ import { ProjectDetailPage } from './pages/ProjectDetailPage'
 const queryClient = new QueryClient()
 
 function AuthenticatedApp() {
-  const { authenticated, login } = useAuth()
+  const { authenticated, loading, signInWithGoogle } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   if (!authenticated) {
-    return <PasswordGate onLogin={login} />
+    return <PasswordGate onSignIn={signInWithGoogle} />
   }
 
   return (

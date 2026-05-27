@@ -32,9 +32,11 @@ export function useProjects() {
 
   const createProject = useMutation({
     mutationFn: async (input: ProjectInsert) => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
       const { data, error } = await supabase
         .from('projects')
-        .insert({ ...input, id: nanoid(11) })
+        .insert({ ...input, id: nanoid(11), user_id: user.id })
         .select()
         .single()
       if (error) throw error

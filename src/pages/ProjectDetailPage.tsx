@@ -95,8 +95,11 @@ export function ProjectDetailPage() {
   }, [id, queryClient])
 
   const updateProject = useMutation({
-    mutationFn: async (data: { name: string; description: string | null }) => {
-      const { error } = await supabase.from('projects').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id!)
+    mutationFn: async (data: { name: string; description: string | null; join_password?: string | null }) => {
+      const { join_password, ...rest } = data
+      const updateData: Record<string, unknown> = { ...rest, updated_at: new Date().toISOString() }
+      if (join_password !== undefined) updateData.join_password = join_password
+      const { error } = await supabase.from('projects').update(updateData).eq('id', id!)
       if (error) throw error
     },
     onSuccess: () => {

@@ -1,9 +1,9 @@
-import { useState } from 'react'
-import { Plus, Pickaxe, Sun, Moon } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Plus, Pickaxe, Sun, Moon, LogOut } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useProjects } from '../hooks/useProjects'
+import { useAuth } from '../hooks/useAuth'
 import { useTheme } from '../contexts/ThemeContext'
 import { ProjectCard } from '../components/ProjectCard'
 import { AddProjectModal } from '../components/AddProjectModal'
@@ -12,6 +12,7 @@ import type { Material } from '../types'
 
 interface ProjectWithMaterials {
   id: string
+  user_id: string
   name: string
   description: string | null
   created_at: string
@@ -54,12 +55,31 @@ export function ProjectsPage() {
   const { data: projects, isLoading, isError } = useProjectsWithMaterials()
   const { createProject, deleteProject } = useProjects()
   const { isDark, toggle } = useTheme()
+  const { user, signOut } = useAuth()
+  const queryClient = useQueryClient()
   const [showModal, setShowModal] = useState(false)
-  const [deletingProject, setDeletingProject] = useState<{ id: string; name: string } | null>(null)
+  const [deletingProject, setDeletingProject] = useState<{ id: string; name: string; isOwner: boolean } | null>(null)
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const userMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node))
+        setShowUserMenu(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   function handleDelete(id: string) {
     const project = projects?.find(p => p.id === id)
-    if (project) setDeletingProject({ id: project.id, name: project.name })
+    if (project) setDeletingProject({ id: project.id, name: project.name, isOwner: project.user_id === user?.id })
+  }
+
+  async function handleRemoveFromList(projectId: string) {
+    if (!user) return
+    await supabase.from('project_members').delete().eq('project_id', projectId).eq('user_id', user.id)
+    queryClient.invalidateQueries({ queryKey: ['projects-with-materials'] })
   }
 
   return (
@@ -85,8 +105,44 @@ export function ProjectsPage() {
               className="flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold rounded-xl transition-colors"
             >
               <Plus size={16} />
-              새 프로젝트
+              프로젝트 추가
             </button>
+            <div ref={userMenuRef} className="relative">
+              <button
+                id="user-menu-button"
+                onClick={() => setShowUserMenu(v => !v)}
+                className="flex items-center justify-center w-8 h-8 rounded-full overflow-hidden border-2 border-transparent hover:border-green-500 transition-colors"
+                aria-label="사용자 메뉴"
+              >
+                {user?.user_metadata?.avatar_url ? (
+                  <img src={user.user_metadata.avatar_url} alt="프로필" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">
+                    {(user?.user_metadata?.full_name ?? user?.email ?? '?')[0].toUpperCase()}
+                  </div>
+                )}
+              </button>
+
+              {showUserMenu && (
+                <div className="absolute right-0 top-10 w-56 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg z-50 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      {user?.user_metadata?.full_name ?? '사용자'}
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 truncate mt-0.5">
+                      {user?.email}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => { setShowUserMenu(false); signOut() }}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                  >
+                    <LogOut size={15} />
+                    로그아웃
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -145,8 +201,10 @@ export function ProjectsPage() {
       {deletingProject && (
         <DeleteProjectModal
           projectName={deletingProject.name}
+          isOwner={deletingProject.isOwner}
           onClose={() => setDeletingProject(null)}
-          onConfirm={() => deleteProject.mutateAsync(deletingProject.id)}
+          onRemoveFromList={() => handleRemoveFromList(deletingProject.id)}
+          onDeleteAll={() => deleteProject.mutateAsync(deletingProject.id)}
         />
       )}
     </div>

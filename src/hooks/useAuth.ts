@@ -1,28 +1,30 @@
-import { useState, useCallback } from 'react'
-
-const SESSION_KEY = 'mc_planner_auth'
-
-function isAuthenticated(): boolean {
-  return sessionStorage.getItem(SESSION_KEY) === 'true'
-}
+import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
+import type { User } from '@supabase/supabase-js'
 
 export function useAuth() {
-  const [authenticated, setAuthenticated] = useState(isAuthenticated)
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const login = useCallback((password: string): boolean => {
-    const correct = import.meta.env.VITE_APP_PASSWORD
-    if (password === correct) {
-      sessionStorage.setItem(SESSION_KEY, 'true')
-      setAuthenticated(true)
-      return true
-    }
-    return false
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+      setLoading(false)
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
-  const logout = useCallback(() => {
-    sessionStorage.removeItem(SESSION_KEY)
-    setAuthenticated(false)
-  }, [])
+  const signInWithGoogle = () => supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin },
+  })
 
-  return { authenticated, login, logout }
+  const signOut = () => supabase.auth.signOut()
+
+  return { user, loading, authenticated: !!user, signInWithGoogle, signOut }
 }

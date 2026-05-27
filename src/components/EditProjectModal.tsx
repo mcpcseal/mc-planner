@@ -5,20 +5,33 @@ import type { Project } from '../types'
 interface Props {
   project: Project
   onClose: () => void
-  onSubmit: (data: { name: string; description: string | null }) => Promise<void>
+  onSubmit: (data: { name: string; description: string | null; join_password?: string | null }) => Promise<void>
 }
 
 export function EditProjectModal({ project, onClose, onSubmit }: Props) {
   const [name, setName] = useState(project.name)
   const [description, setDescription] = useState(project.description ?? '')
+  const [newPassword, setNewPassword] = useState('')
+  const [willRemove, setWillRemove] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  const hasPassword = !!project.join_password
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!name.trim()) return
     setLoading(true)
     try {
-      await onSubmit({ name: name.trim(), description: description.trim() || null })
+      const data: { name: string; description: string | null; join_password?: string | null } = {
+        name: name.trim(),
+        description: description.trim() || null,
+      }
+      if (willRemove) {
+        data.join_password = null
+      } else if (newPassword.trim()) {
+        data.join_password = newPassword.trim()
+      }
+      await onSubmit(data)
       onClose()
     } finally {
       setLoading(false)
@@ -55,6 +68,33 @@ export function EditProjectModal({ project, onClose, onSubmit }: Props) {
               className="w-full px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 focus:border-green-500 outline-none transition-colors resize-none"
             />
           </div>
+
+          <div className="pt-1 border-t border-gray-100 dark:border-gray-800">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-gray-600 dark:text-gray-300">참여 비밀번호</label>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${hasPassword ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500'}`}>
+                {hasPassword ? '설정됨' : '없음'}
+              </span>
+            </div>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={e => { setNewPassword(e.target.value); setWillRemove(false) }}
+              disabled={willRemove}
+              placeholder={willRemove ? '비밀번호가 제거됩니다' : hasPassword ? '새 비밀번호 (변경 시 입력)' : '비밀번호 설정 (선택)'}
+              className="w-full px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 border border-gray-200 dark:border-gray-700 focus:border-green-500 outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            />
+            {hasPassword && (
+              <button
+                type="button"
+                onClick={() => { setWillRemove(v => !v); setNewPassword('') }}
+                className={`mt-2 text-xs px-3 py-1.5 rounded-lg transition-colors ${willRemove ? 'bg-red-100 dark:bg-red-900/30 text-red-500 dark:text-red-400' : 'text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10'}`}
+              >
+                {willRemove ? '제거 취소' : '비밀번호 제거'}
+              </button>
+            )}
+          </div>
+
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onClose}
               className="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
