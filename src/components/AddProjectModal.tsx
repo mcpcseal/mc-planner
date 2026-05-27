@@ -134,6 +134,7 @@ export function AddProjectModal({ onClose, onSubmit }: Props) {
               <input
                 id="project-password-input"
                 type="password"
+                autoComplete="new-password"
                 value={createPassword}
                 onChange={e => setCreatePassword(e.target.value)}
                 placeholder="설정하면 참여 시 비밀번호 필요"
@@ -174,6 +175,7 @@ export function AddProjectModal({ onClose, onSubmit }: Props) {
               <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">비밀번호 (설정된 경우)</label>
               <input
                 type="password"
+                autoComplete="new-password"
                 value={joinPassword}
                 onChange={e => { setJoinPassword(e.target.value); setJoinError(null) }}
                 placeholder="비밀번호가 없으면 비워두세요"

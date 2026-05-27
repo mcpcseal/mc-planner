@@ -78,6 +78,7 @@ export function EditProjectModal({ project, onClose, onSubmit }: Props) {
             </div>
             <input
               type="password"
+              autoComplete="new-password"
               value={newPassword}
               onChange={e => { setNewPassword(e.target.value); setWillRemove(false) }}
               disabled={willRemove}

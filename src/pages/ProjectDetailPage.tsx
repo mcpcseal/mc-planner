@@ -1,6 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Sun, Moon, Pencil, ArrowUpDown, ArrowUp, ArrowDown, Search, X, Lock } from 'lucide-react'
+import { ArrowLeft, Plus, Sun, Moon, Pencil, ArrowUpDown, ArrowUp, ArrowDown, Search, X, Lock, ChevronDown, ChevronUp } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   DndContext,
@@ -20,12 +20,20 @@ import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../lib/supabase'
 import { useMaterials } from '../hooks/useMaterials'
 import { useTheme } from '../contexts/ThemeContext'
+import { useAuth } from '../hooks/useAuth'
 import { MaterialRow } from '../components/MaterialRow'
 import { AddMaterialModal } from '../components/AddMaterialModal'
 import { EditProjectModal } from '../components/EditProjectModal'
 import { EditMaterialModal } from '../components/EditMaterialModal'
 import { ProgressBar } from '../components/ProgressBar'
 import type { Project, Material } from '../types'
+
+interface ProjectMember {
+  user_id: string
+  full_name: string
+  avatar_url: string | null
+  is_owner: boolean
+}
 
 function SortableMaterialRow({
   material,
@@ -67,7 +75,9 @@ export function ProjectDetailPage() {
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null)
   const [sortMode, setSortMode] = useState<'none' | 'rem_asc' | 'rem_desc' | 'prog_asc' | 'prog_desc'>('none')
   const [searchQuery, setSearchQuery] = useState('')
+  const [showMembers, setShowMembers] = useState(false)
 
+  const { user } = useAuth()
   const queryClient = useQueryClient()
   const { data: project, isError: projectError, isLoading: projectLoading, refetch: refetchProject } = useQuery({
     queryKey: ['project', id],
@@ -112,6 +122,28 @@ export function ProjectDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['project', id] })
       queryClient.invalidateQueries({ queryKey: ['projects-with-materials'] })
     },
+  })
+
+  const membersQuery = useQuery({
+    queryKey: ['project-members', id],
+    queryFn: async (): Promise<ProjectMember[]> => {
+      const { data, error } = await supabase.rpc('get_project_members', { p_project_id: id! })
+      if (error) throw error
+      return (data as ProjectMember[]) ?? []
+    },
+    enabled: !!id && !!project,
+  })
+
+  const removeMember = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase
+        .from('project_members')
+        .delete()
+        .eq('project_id', id!)
+        .eq('user_id', userId)
+      if (error) throw error
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['project-members', id] }),
   })
 
   const [joinPassword, setJoinPassword] = useState('')
@@ -254,6 +286,7 @@ export function ProjectDetailPage() {
                 <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1.5">비밀번호 (설정된 경우)</label>
                 <input
                   type="password"
+                  autoComplete="new-password"
                   value={joinPassword}
                   onChange={e => { setJoinPassword(e.target.value); setJoinError(null) }}
                   placeholder="비밀번호가 없으면 비워두세요"
@@ -286,6 +319,65 @@ export function ProjectDetailPage() {
           <ProgressBar value={overallProgress} />
           <p id="overall-progress-percent" className="text-right text-xs text-gray-400 dark:text-gray-500 mt-1">{Math.floor(overallProgress * 100)}%</p>
         </div>
+
+        {membersQuery.data && membersQuery.data.length > 0 && (
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+            <button
+              onClick={() => setShowMembers(v => !v)}
+              className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <div className="flex -space-x-2">
+                  {membersQuery.data.slice(0, 4).map(m => (
+                    <div key={m.user_id} className="w-6 h-6 rounded-full overflow-hidden border-2 border-white dark:border-gray-900 shrink-0">
+                      {m.avatar_url
+                        ? <img src={m.avatar_url} alt={m.full_name} className="w-full h-full object-cover" />
+                        : <div className="w-full h-full bg-green-500 flex items-center justify-center text-white text-[10px] font-bold">{(m.full_name ?? '?')[0].toUpperCase()}</div>
+                      }
+                    </div>
+                  ))}
+                </div>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  참여자 {membersQuery.data.length}명
+                </span>
+              </div>
+              {showMembers ? <ChevronUp size={15} className="text-gray-400 shrink-0" /> : <ChevronDown size={15} className="text-gray-400 shrink-0" />}
+            </button>
+
+            {showMembers && (
+              <div className="border-t border-gray-100 dark:border-gray-800 px-5 py-3 space-y-2.5">
+                {membersQuery.data.map(member => (
+                  <div key={member.user_id} className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-full overflow-hidden shrink-0">
+                      {member.avatar_url
+                        ? <img src={member.avatar_url} alt={member.full_name} className="w-full h-full object-cover" />
+                        : <div className="w-full h-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">{(member.full_name ?? '?')[0].toUpperCase()}</div>
+                      }
+                    </div>
+                    <span className="flex-1 text-sm text-gray-800 dark:text-gray-200 truncate">
+                      {member.full_name}
+                      {member.user_id === user?.id && (
+                        <span className="text-gray-400 dark:text-gray-500 ml-1.5 text-xs">나</span>
+                      )}
+                    </span>
+                    {member.is_owner && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 shrink-0">소유자</span>
+                    )}
+                    {project?.user_id === user?.id && !member.is_owner && (
+                      <button
+                        onClick={() => removeMember.mutate(member.user_id)}
+                        disabled={removeMember.isPending}
+                        className="text-xs text-gray-400 hover:text-red-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors px-2 py-0.5 rounded-lg shrink-0"
+                      >
+                        내보내기
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
