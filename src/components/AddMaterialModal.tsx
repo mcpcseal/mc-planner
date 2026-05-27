@@ -116,12 +116,12 @@ export function AddMaterialModal({ projectId, onClose, onSubmit }: Props) {
         supabase.from('block_images').select('name, name_ko, image_url')
           .or(`name.ilike.${q}%,name_ko.ilike.${q}%`).order('name').limit(8),
         supabase.from('block_images').select('name, name_ko, image_url')
-          .or(`name.ilike.%${q}%,name_ko.ilike.%${q}%`).order('name').limit(12),
+          .or(`name.ilike.%${q}%,name_ko.ilike.%${q}%`).order('name').limit(20),
       ])
       const seen = new Set<string>()
       const merged: BlockImage[] = []
       for (const item of [...(exact.data ?? []), ...(prefix.data ?? []), ...(contains.data ?? [])]) {
-        if (!seen.has(item.name) && merged.length < 8) { seen.add(item.name); merged.push(item) }
+        if (!seen.has(item.name) && merged.length < 12) { seen.add(item.name); merged.push(item) }
       }
       setSearchResults(merged)
       setShowDropdown(true)
