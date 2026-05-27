@@ -71,6 +71,7 @@ export function MaterialRow({ material, onUpdateCount, onDelete, onEdit, dragHan
         </div>
 
         <div className="flex items-center w-full sm:w-auto shrink-0">
+          <div className="w-[26px] shrink-0 sm:hidden" />
           <div className="flex-1 flex items-center justify-center gap-1 sm:flex-none">
             <button
               id={`material-decrement-set-${id}`}
