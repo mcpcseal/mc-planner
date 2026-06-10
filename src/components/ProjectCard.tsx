@@ -18,7 +18,7 @@ export function ProjectCard({ project, completedMaterials, totalMaterials, onDel
     <div
       id={`project-card-${project.id}`}
       onClick={() => navigate(`/projects/${project.id}`)}
-      className="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600 cursor-pointer transition-colors group flex flex-col"
+      className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600 cursor-pointer transition-colors group flex flex-col"
     >
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="flex-1 min-w-0">
@@ -41,7 +41,7 @@ export function ProjectCard({ project, completedMaterials, totalMaterials, onDel
         </div>
       </div>
 
-      <div className="mt-auto pt-4 mb-4">
+      <div className="mt-auto pt-3 mb-2">
         <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500 mb-1.5">
           <span>재료 진행도</span>
           <span>{completedMaterials} / {totalMaterials} 완료</span>
