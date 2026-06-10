@@ -88,7 +88,7 @@ export function ProjectsPage() {
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Pickaxe size={20} className="text-green-500 dark:text-green-400" />
-            <h1 className="text-lg font-bold">MC Planner</h1>
+            <h1 className="text-sm sm:text-lg font-bold">MC Planner</h1>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -102,10 +102,10 @@ export function ProjectsPage() {
             <button
               id="add-project-button"
               onClick={() => setShowModal(true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold rounded-xl transition-colors"
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-xs sm:text-sm font-semibold rounded-xl transition-colors"
             >
               <Plus size={16} />
-              프로젝트 추가
+              <span className="hidden sm:inline">프로젝트 추가</span>
             </button>
             <div ref={userMenuRef} className="relative">
               <button
@@ -115,7 +115,7 @@ export function ProjectsPage() {
                 aria-label="사용자 메뉴"
               >
                 {user?.user_metadata?.avatar_url ? (
-                  <img src={user.user_metadata.avatar_url} alt="프로필" className="w-full h-full object-cover" />
+                  <img src={user.user_metadata.avatar_url} alt="프로필" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 ) : (
                   <div className="w-full h-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">
                     {(user?.user_metadata?.full_name ?? user?.email ?? '?')[0].toUpperCase()}
