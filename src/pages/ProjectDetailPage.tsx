@@ -265,7 +265,6 @@ export function ProjectDetailPage() {
               className="flex items-center gap-1.5 px-3 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold rounded-xl transition-colors"
             >
               <Plus size={15} />
-              재료 추가
             </button>
           </div>
         </div>
